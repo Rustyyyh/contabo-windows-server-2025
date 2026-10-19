@@ -11,51 +11,52 @@ Install **Windows Server 2025** on your Contabo VPS with one script. No ISO uplo
 - A VNC viewer, such as [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) (free)
 - About 30-45 minutes
 
-## Step 1 - Start the Rescue System
+## Installation
+
+Follow these steps in order.
+
+**Prepare the VPS**
 
 1. Log in to the Contabo control panel.
 2. Find your VPS and click **Manage → Rescue System**.
-3. Choose the newest **Debian** version, set a password and start it.
-4. Wait about a minute.
+3. Choose the newest **Debian** version, set a password and click **Start**. Wait about a minute.
 
-## Step 2 - Run the script
+**Run the script**
 
-Open a terminal (on Windows: **PowerShell**) and connect to your VPS. Replace `YOUR_VPS_IP` with your VPS IP address:
+4. On your PC, open **PowerShell** (on Mac or Linux: **Terminal**).
+5. Connect to your VPS (replace `YOUR_VPS_IP` with your VPS IP address):
+   ```sh
+   ssh root@YOUR_VPS_IP
+   ```
+6. If asked, type `yes`. Then type the password from step 3 (it stays invisible while you type) and press Enter.
+7. Copy and paste these two lines and press Enter:
+   ```sh
+   wget https://raw.githubusercontent.com/Rustyyyh/contabo-windows-server-2025/main/install.sh
+   bash install.sh
+   ```
+8. When asked, type `YES` and press Enter. Wait 15-30 minutes.
+9. When it says **Ready**, write down the **IP address** and **gateway** it shows. Press Enter: the VPS restarts.
 
-```sh
-ssh root@YOUR_VPS_IP
-```
+**Install Windows**
 
-Type `yes` if asked, then the password from Step 1 (it stays invisible while you type).
+10. In the Contabo panel, click **Manage → VNC Information**. Note the address and port, and set a VNC password.
+11. Open your VNC viewer and connect to that address. You will see the Windows installer.
+12. Choose your language and keyboard, then click **Next** and **Install**.
+13. On the screen **Install driver to show hardware**, click **Browse**, choose `X:\virtio` and click **OK**.
+14. Select **all** the drivers in the list and click **Install**.
+15. Choose **Windows Server 2025 Standard Evaluation (Desktop Experience)** and click **Next**.
+16. Accept the license terms.
+17. Choose **Unallocated Space** and click **Next**.
+18. Wait while Windows installs. The VPS restarts a few times by itself.
+19. Choose a password for **Administrator** and click **Finish**.
 
-Now copy and paste these two lines:
+**Connect to your server**
 
-```sh
-wget https://raw.githubusercontent.com/Rustyyyh/contabo-windows-server-2025/main/install.sh
-bash install.sh
-```
+20. On your Windows PC, press **Win+R**, type `mstsc` and press Enter.
+21. Type your VPS IP address and click **Connect**.
+22. Log in as `Administrator` with the password from step 19.
 
-When asked, type `YES` and press Enter. Then wait: it takes 15-30 minutes.
-
-When it says **Ready**, write down the IP address and gateway it shows, then press Enter. The VPS restarts.
-
-## Step 3 - Install Windows
-
-1. In the Contabo panel, click **Manage → VNC Information** to see the VNC address and set a VNC password.
-2. Connect with your VNC viewer. You will see the Windows installer.
-3. Choose your language and click **Install**.
-4. When asked for a driver:
-   - click **Browse**, choose `X:\virtio` and click **OK**;
-   - select **all** the drivers in the list and click **Install**.
-5. Choose **Windows Server 2025 Standard Evaluation (Desktop Experience)**.
-6. Choose **Unallocated Space** and click **Next**.
-7. Wait for the installation, then choose a password for **Administrator**.
-
-## Step 4 - Connect to your server
-
-On your Windows PC, open **Remote Desktop Connection**, type your VPS IP and log in as `Administrator` with the password you just chose.
-
-That's it. Enjoy your Windows Server.
+Done. Enjoy your Windows Server.
 
 ## Something went wrong?
 
@@ -66,19 +67,19 @@ Your own PC catches that key combination. In RealVNC, press **F8** inside the VN
 Press **Win+R**, type `main.cpl` and press Enter. In **Pointer Options**, uncheck **Enhance pointer precision** and click OK. Then move the mouse to the top-left corner to realign it.
 
 **There is no `X:\virtio` folder, or you get error `0x80070103`**
-Start the Rescue System again (Step 1), connect (Step 2) and run:
+Repeat steps 1-6, then run:
 ```sh
 wget https://raw.githubusercontent.com/Rustyyyh/contabo-windows-server-2025/main/install.sh
 bash install.sh --repair-drivers
 ```
-Nothing is deleted. The VPS restarts and you can continue from Step 3.
+Nothing is deleted. The VPS restarts and you can continue from step 10.
 
 **Remote Desktop does not connect**
 Open the VNC console, go to **Settings → System → Remote Desktop** and turn it on.
 
 **No internet in Windows**
 The network is set up automatically, but if it does not work, set it by hand. Open the VNC console, open **Terminal**, type `sconfig` and press Enter. Then type `8`, the number of your network adapter, and:
-- `1`, then `S`, then the IP address, subnet mask `255.255.255.0` and the gateway you wrote down in Step 2;
+- `1`, then `S`, then the IP address, subnet mask `255.255.255.0` and the gateway you wrote down in step 9;
 - `2`, then DNS servers `1.1.1.1` and `8.8.8.8`.
 
 ## Good to know
