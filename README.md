@@ -1,102 +1,83 @@
 # Windows Server 2025 on a Contabo VPS
 
-A single script that installs **Windows Server 2025** on a Contabo VPS, starting from the Contabo **Rescue System**.
-
-The script prepares the disk, downloads the official Windows Server 2025 ISO from Microsoft and the VirtIO drivers from the Fedora project, and makes the server boot into Windows Setup. You then finish the installation from the VNC console.
+Install **Windows Server 2025** on your Contabo VPS with one script. No ISO uploads and no tricky setup: the script downloads everything for you.
 
 > [!WARNING]
-> The script **erases the entire disk** of the VPS. Back up anything you need first.
+> This **deletes everything** on your VPS. Save anything you need before you start.
 
-## Requirements
+## What you need
 
-- A Contabo VPS with at least 50 GB of disk (BIOS boot, which is the default on Contabo VPS)
-- A VNC viewer, for example [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/)
-- An SSH client (built into Windows 10/11, macOS and Linux)
-- A Remote Desktop client (built into Windows: `mstsc`)
+- A Contabo VPS (at least 50 GB of disk)
+- A VNC viewer, such as [RealVNC Viewer](https://www.realvnc.com/en/connect/download/viewer/) (free)
+- About 30-45 minutes
 
-## 1. Start the Rescue System
+## Step 1 - Start the Rescue System
 
-In the Contabo control panel:
+1. Log in to the Contabo control panel.
+2. Find your VPS and click **Manage → Rescue System**.
+3. Choose the newest **Debian** version, set a password and start it.
+4. Wait about a minute.
 
-1. Open your VPS, then **Manage → Rescue System**.
-2. Pick the latest **Debian** rescue image and set a root password.
-3. Start the Rescue System and wait a minute.
+## Step 2 - Run the script
 
-## 2. Run the script
-
-Connect over SSH with the rescue password:
+Open a terminal (on Windows: **PowerShell**) and connect to your VPS. Replace `YOUR_VPS_IP` with your VPS IP address:
 
 ```sh
 ssh root@YOUR_VPS_IP
 ```
 
-Then download and run the script:
+Type `yes` if asked, then the password from Step 1 (it stays invisible while you type).
+
+Now copy and paste these two lines:
 
 ```sh
 wget https://raw.githubusercontent.com/Rustyyyh/contabo-windows-server-2025/main/install.sh
 bash install.sh
 ```
 
-The script shows the disk and asks you to type `YES` before changing anything. The full run takes 15 to 30 minutes, mostly for the download. At the end it shows your **IP address and gateway**: write them down, then press Enter to reboot.
+When asked, type `YES` and press Enter. Then wait: it takes 15-30 minutes.
 
-## 3. Install Windows over VNC
+When it says **Ready**, write down the IP address and gateway it shows, then press Enter. The VPS restarts.
 
-Get the VNC address and port from **Manage → VNC Information** in the control panel, set a VNC password if you have not done it yet, and connect.
+## Step 3 - Install Windows
 
-1. If asked, press any key to start Setup.
-2. Choose language and keyboard, then **Install**.
-3. On **Install driver to show hardware**:
-   - click **Browse**, select `X:\virtio` and click **OK**;
-   - select **all** the drivers in the list (VirtIO SCSI and VirtIO Ethernet) and click **Install**.
-4. Choose **Windows Server 2025 Standard (Desktop Experience)**.
-5. Select **Unallocated Space** and click **Next**.
-6. When Setup finishes, set the **Administrator** password.
+1. In the Contabo panel, click **Manage → VNC Information** to see the VNC address and set a VNC password.
+2. Connect with your VNC viewer. You will see the Windows installer.
+3. Choose your language and click **Install**.
+4. When asked for a driver:
+   - click **Browse**, choose `X:\virtio` and click **OK**;
+   - select **all** the drivers in the list and click **Install**.
+5. Choose **Windows Server 2025 Standard Evaluation (Desktop Experience)**.
+6. Choose **Unallocated Space** and click **Next**.
+7. Wait for the installation, then choose a password for **Administrator**.
 
-## 4. Connect with Remote Desktop
+## Step 4 - Connect to your server
 
-Remote Desktop is enabled automatically at the end of Setup. Connect to your VPS IP with the user `Administrator`:
+On your Windows PC, open **Remote Desktop Connection**, type your VPS IP and log in as `Administrator` with the password you just chose.
 
+That's it. Enjoy your Windows Server.
+
+## Something went wrong?
+
+**There is no `X:\virtio` folder, or you get error `0x80070103`**
+Start the Rescue System again (Step 1), connect (Step 2) and run:
 ```sh
-mstsc /v:YOUR_VPS_IP
+wget https://raw.githubusercontent.com/Rustyyyh/contabo-windows-server-2025/main/install.sh
+bash install.sh --repair-drivers
 ```
+Nothing is deleted. The VPS restarts and you can continue from Step 3.
 
-## Troubleshooting
+**Remote Desktop does not connect**
+Open the VNC console, go to **Settings → System → Remote Desktop** and turn it on.
 
-| Problem | Solution |
-|---|---|
-| `X:\virtio` does not exist in Setup | Boot the Rescue System again and run `bash install.sh --repair-drivers`. It rebuilds the drivers without erasing anything. |
-| The driver list is empty | Uncheck **Hide drivers that aren't compatible** and check that `X:\virtio\vioscsi` is selected. |
-| Error `0x80070103 - 0x40031` | Drivers were auto-loaded by an older version of this script. Run `bash install.sh --repair-drivers` from the Rescue System. |
-| No network in Windows | Set a static IP with the values shown by the script (IP, gateway, mask `255.255.255.0`, DNS `1.1.1.1`). |
-| Remote Desktop does not connect | From VNC: **Settings → System → Remote Desktop → On**. |
-| `the server booted in UEFI mode` | This VPS uses UEFI boot, which the script does not support. |
+**No internet in Windows**
+Set the network manually with the IP address and gateway you wrote down in Step 2 (subnet mask `255.255.255.0`, DNS `1.1.1.1`).
 
-## How it works
+## Good to know
 
-```
-Disk (MBR)
-├── Partition 1  NTFS  14 GiB   Windows installer files + GRUB, active
-│                               (after Setup it holds the Windows boot files)
-└── Unallocated  rest of disk   Windows is installed here
-```
-
-1. The disk is split into a 14 GiB installer partition and a temporary partition for the downloads.
-2. The Windows ISO is copied to the installer partition, and GRUB is installed to start the Windows boot manager from it.
-3. The VirtIO disk and network drivers are added to the Setup environment (`boot.wim`) as `X:\virtio`. The full driver set is kept in `virtio-drivers` on the installer partition.
-4. A `SetupComplete.cmd` script enables Remote Desktop and its firewall rule.
-5. The temporary partition is deleted, so Setup sees the free space as **Unallocated Space**.
-
-The installer partition (14 GiB) stays on the disk because Windows boots from it. You can give it a drive letter in Disk Management and delete everything except `bootmgr` and the `Boot` folder to reuse the space.
-
-## Licensing
-
-The ISO is the official **Windows Server 2025 Evaluation**, valid for 180 days. To keep using Windows Server, convert it to a licensed edition with your own product key:
-
-```
-DISM /Online /Set-Edition:ServerStandard /ProductKey:XXXXX-XXXXX-XXXXX-XXXXX-XXXXX /AcceptEula
-```
-
-You are responsible for licensing Windows correctly. Use this script at your own risk.
+- This is the free **evaluation** version of Windows Server, valid for **180 days**. To keep using it, activate it with your own license key.
+- About 14 GB of the disk is kept for the Windows startup files.
+- Use it at your own risk.
 
 ## License
 
