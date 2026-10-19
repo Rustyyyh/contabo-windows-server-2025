@@ -59,6 +59,12 @@ That's it. Enjoy your Windows Server.
 
 ## Something went wrong?
 
+**The screen says "Press Ctrl+Alt+Delete" and nothing happens**
+Your own PC catches that key combination. In RealVNC, press **F8** inside the VNC window and choose **Send Ctrl+Alt+Del** (or use the button in the top toolbar).
+
+**The mouse pointer does not follow your mouse in VNC**
+Press **Win+R**, type `main.cpl` and press Enter. In **Pointer Options**, uncheck **Enhance pointer precision** and click OK. Then move the mouse to the top-left corner to realign it.
+
 **There is no `X:\virtio` folder, or you get error `0x80070103`**
 Start the Rescue System again (Step 1), connect (Step 2) and run:
 ```sh
@@ -71,7 +77,9 @@ Nothing is deleted. The VPS restarts and you can continue from Step 3.
 Open the VNC console, go to **Settings → System → Remote Desktop** and turn it on.
 
 **No internet in Windows**
-Set the network manually with the IP address and gateway you wrote down in Step 2 (subnet mask `255.255.255.0`, DNS `1.1.1.1`).
+The network is set up automatically, but if it does not work, set it by hand. Open the VNC console, open **Terminal**, type `sconfig` and press Enter. Then type `8`, the number of your network adapter, and:
+- `1`, then `S`, then the IP address, subnet mask `255.255.255.0` and the gateway you wrote down in Step 2;
+- `2`, then DNS servers `1.1.1.1` and `8.8.8.8`.
 
 ## Good to know
 

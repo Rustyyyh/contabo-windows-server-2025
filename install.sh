@@ -222,16 +222,41 @@ mkdir -p /mnt/setup/virtio-tools
 cp /mnt/virtio/virtio-win-gt-x64.msi /mnt/virtio/virtio-win-guest-tools.exe /mnt/setup/virtio-tools/ 2>/dev/null || true
 inject_winpe_drivers /mnt/setup
 
-# --- 6. Enable Remote Desktop at the end of Setup -----------------------------
+# --- 6. First-boot setup: drivers, network, Remote Desktop --------------------
+#
+# Setup copies sources\$OEM$\$$ to C:\Windows and runs SetupComplete.cmd once
+# at the end of the installation.
 
 scripts='/mnt/setup/sources/$OEM$/$$/Setup/Scripts'
 mkdir -p "$scripts"
+cp -r /mnt/setup/virtio-drivers "$scripts/virtio"
+
+# Contabo gives no DHCP lease: use the static address seen by the rescue
+cat > "$scripts/network.ps1" <<EOF
+\$ip = '${ADDRESS%/*}'; \$prefix = ${ADDRESS#*/}; \$gateway = '$GATEWAY'
+EOF
+cat >> "$scripts/network.ps1" <<'EOF'
+# Wait for the VirtIO network adapter to appear
+for ($i = 0; $i -lt 30 -and -not $nic; $i++) {
+    $nic = Get-NetAdapter -Physical -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $nic) { Start-Sleep -Seconds 2 }
+}
+if (-not $nic) { exit 1 }
+Set-NetIPInterface -InterfaceIndex $nic.ifIndex -Dhcp Disabled
+Get-NetIPAddress -InterfaceIndex $nic.ifIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
+    Remove-NetIPAddress -Confirm:$false
+New-NetIPAddress -InterfaceIndex $nic.ifIndex -IPAddress $ip -PrefixLength $prefix -DefaultGateway $gateway
+Set-DnsClientServerAddress -InterfaceIndex $nic.ifIndex -ServerAddresses 1.1.1.1, 8.8.8.8
+EOF
+
 cat > "$scripts/SetupComplete.cmd" <<'EOF'
 @echo off
+pnputil /add-driver "%~dp0virtio\*.inf" /subdirs /install
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0network.ps1"
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
 netsh advfirewall firewall set rule group="@FirewallAPI.dll,-28752" new enable=Yes
 EOF
-sed -i 's/$/\r/' "$scripts/SetupComplete.cmd"
+sed -i 's/$/\r/' "$scripts/SetupComplete.cmd" "$scripts/network.ps1"
 
 # --- 7. Bootloader (GRUB -> Windows bootmgr) ---------------------------------
 
